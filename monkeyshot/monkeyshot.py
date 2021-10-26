@@ -76,6 +76,9 @@ class MonkeyHouse:
         self.dynamic_screenshot_button_img = ImageTk.PhotoImage(
             file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\dynamic_screenshot_button_48px_#AA0000.png"
         )
+        self.record_button_img = ImageTk.PhotoImage(
+            file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\record_button_48px_#AA0000.png"
+        )
 
         self.static_screenshot_button = Button(
             self.canvas,
@@ -97,9 +100,20 @@ class MonkeyHouse:
             bd=0,
             highlightthickness=10
         )
+        self.record_button = Button(
+            self.canvas,
+            image=self.record_button_img,
+            command=self.monkey_see,
+            bg="black",
+            padx=5,
+            pady=5,
+            bd=0,
+            highlightthickness=10
+        )
 
         self.static_screenshot_button.pack(side='left')
         self.dynamic_screenshot_button.pack(side='left')
+        self.record_button.pack(side='left')
 
         static_screenshot_button_tooltip = Hovertip(
             self.static_screenshot_button,
@@ -121,6 +135,12 @@ class MonkeyHouse:
         self.window.withdraw()
         screenshot_session = MonkeyShot()
         screenshot_session.shoot(mode)
+        self.window.deiconify()
+
+    def monkey_see(self):
+        self.window.withdraw()
+        recording_session = MonkeyShot()
+        recording_session.record()
         self.window.deiconify()
 
     def _save_last_click(self, event):
@@ -185,7 +205,7 @@ class MonkeyShot:
         codec = VideoWriter_fourcc(*'mp4v')  # MP4
         filename = "Recording.mp4"
         fps = 24.0
-        out = VideoWriter(filename, codec, fps, resolution)
+        out = VideoWriter(join(self.location, filename), codec, fps, resolution)
         run = True
 
         while run:
