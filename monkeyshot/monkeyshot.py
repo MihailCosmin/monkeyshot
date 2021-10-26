@@ -6,7 +6,6 @@ from os.path import expanduser
 from pathlib import Path
 
 from tkinter import Tk
-from tkinter import Label
 from tkinter import Frame
 from tkinter import Canvas
 from tkinter import Button
@@ -18,6 +17,14 @@ from pyautogui import screenshot
 from PIL import ImageTk
 
 from idlelib.tooltip import Hovertip
+
+from numpy import array
+
+from cv2 import cvtColor
+from cv2 import VideoWriter
+from cv2 import COLOR_BGR2RGB
+from cv2 import VideoWriter_fourcc
+
 
 class MonkeyHouse:
     """GUI for MonkeyShot
@@ -170,6 +177,27 @@ class MonkeyShot:
 
         self.window.after(1, self._crosshair, None, None, None)
         self.window.mainloop()
+
+    def record(self):
+        resolution = (1920, 1080)
+
+        # codec = cv2.VideoWriter_fourcc(*"XVID")  # AVI
+        codec = VideoWriter_fourcc(*'mp4v')  # MP4
+        filename = "Recording.mp4"
+        fps = 24.0
+        out = VideoWriter(filename, codec, fps, resolution)
+        run = True
+
+        while run:
+            try:
+                img = screenshot()
+                frame = array(img)
+                frame = cvtColor(frame, COLOR_BGR2RGB)
+                out.write(frame)
+            except KeyboardInterrupt:
+                run = False
+
+        out.release()
 
     def set_location(self, loc: str):
         """Set location where to save the screenshot
