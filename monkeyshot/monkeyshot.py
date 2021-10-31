@@ -1,6 +1,8 @@
-"""monkeyShot provides a tool for making easy screenshots
+"""monkeyShot is an applciation for making screenshots and video recording
 """
 from os.path import join
+from os.path import dirname
+from os.path import realpath
 from os.path import expanduser
 
 from pathlib import Path
@@ -20,10 +22,10 @@ from idlelib.tooltip import Hovertip
 
 from numpy import array
 
-from cv2 import cvtColor
-from cv2 import VideoWriter
-from cv2 import COLOR_BGR2RGB
-from cv2 import VideoWriter_fourcc
+from cv2.cv2 import cvtColor
+from cv2.cv2 import VideoWriter
+from cv2.cv2 import COLOR_BGR2RGB
+from cv2.cv2 import VideoWriter_fourcc
 
 
 class MonkeyHouse:
@@ -32,6 +34,7 @@ class MonkeyHouse:
     def __init__(self):
         self.last_click_x = 0
         self.last_click_y = 0
+        self.region = None
         self.main_window()
 
     def main_window(self):
@@ -42,12 +45,22 @@ class MonkeyHouse:
         self.window.configure(bg='black')
         self.window.resizable(False, False)
         self.window.geometry('400x100+200+200')
-        self.window.iconbitmap(r'C:\Users\munte\OneDrive\Desktop\Test\monkey.ico')
+        '''self.window.iconbitmap(
+            join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "monkey.ico"
+            )
+        )'''
 
         self.title_bar = Frame(self.window, bg='black', relief='raised', bd=2, highlightthickness=0)
 
         self.close_button_img = ImageTk.PhotoImage(
-            file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\close_button_24px_#AA0000.png"
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "close_button_24px_#AA0000.png"
+            )
         )
 
         self.close_button = Button(
@@ -71,13 +84,43 @@ class MonkeyHouse:
         self.close_button.pack(side='right')
 
         self.static_screenshot_button_img = ImageTk.PhotoImage(
-            file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\static_screenshot_button_48px_#AA0000.png"
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "static_screenshot_button_48px_#AA0000.png"
+            )
         )
+
         self.dynamic_screenshot_button_img = ImageTk.PhotoImage(
-            file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\dynamic_screenshot_button_48px_#AA0000.png"
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "dynamic_screenshot_button_48px_#AA0000.png"
+            )
         )
+
         self.record_button_img = ImageTk.PhotoImage(
-            file="C:\\Users\\munte\\OneDrive\\Desktop\\Test\\record_button_48px_#AA0000.png"
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "record_button_48px_#AA0000.png"
+            )
+        )
+
+        self.region_record_button_img = ImageTk.PhotoImage(
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "region_record_button_48px_#AA0000.png"
+            )
+        )
+
+        self.settings_button_img = ImageTk.PhotoImage(
+            file=join(
+                dirname(dirname(realpath(__file__))),
+                "img",
+                "settings_button_48px_#AA0000.png"
+            )
         )
 
         self.static_screenshot_button = Button(
@@ -110,10 +153,32 @@ class MonkeyHouse:
             bd=0,
             highlightthickness=10
         )
+        self.region_record_button = Button(
+            self.canvas,
+            image=self.region_record_button_img,
+            command=lambda: self.monkey_see(self.region),
+            bg="black",
+            padx=5,
+            pady=5,
+            bd=0,
+            highlightthickness=10
+        )
+        self.settings_button = Button(
+            self.canvas,
+            image=self.settings_button_img,
+            command=None,
+            bg="black",
+            padx=5,
+            pady=5,
+            bd=0,
+            highlightthickness=10
+        )
 
         self.static_screenshot_button.pack(side='left')
         self.dynamic_screenshot_button.pack(side='left')
         self.record_button.pack(side='left')
+        self.region_record_button.pack(side='left')
+        self.settings_button.pack(side='right')
 
         static_screenshot_button_tooltip = Hovertip(
             self.static_screenshot_button,
@@ -122,6 +187,18 @@ class MonkeyHouse:
         dynamic_screenshot_button_tooltip = Hovertip(
             self.dynamic_screenshot_button,
             'Dynamic Screenshot using Crosshair'
+        )
+        record_button_tooltip = Hovertip(
+            self.record_button,
+            'Fullscreen recording'
+        )
+        region_record_button_tooltip = Hovertip(
+            self.region_record_button,
+            'Specific region recording'
+        )
+        settings_button_tooltip = Hovertip(
+            self.settings_button,
+            'Settings'
         )
 
         self.canvas.pack(expand=1, fill='both')
@@ -137,10 +214,10 @@ class MonkeyHouse:
         screenshot_session.shoot(mode)
         self.window.deiconify()
 
-    def monkey_see(self):
+    def monkey_see(self, region=None):
         self.window.withdraw()
         recording_session = MonkeyShot()
-        recording_session.record()
+        recording_session.record(region)
         self.window.deiconify()
 
     def _save_last_click(self, event):
@@ -198,7 +275,7 @@ class MonkeyShot:
         self.window.after(1, self._crosshair, None, None, None)
         self.window.mainloop()
 
-    def record(self):
+    def record(self, region=None):
         resolution = (1920, 1080)
 
         # codec = cv2.VideoWriter_fourcc(*"XVID")  # AVI
@@ -210,7 +287,10 @@ class MonkeyShot:
 
         while run:
             try:
-                img = screenshot()
+                if region is not None:
+                    img = screenshot(region)
+                else:
+                    img = screenshot()
                 frame = array(img)
                 frame = cvtColor(frame, COLOR_BGR2RGB)
                 out.write(frame)
