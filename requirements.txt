@@ -1,6 +1,4 @@
-numpy
-opencv-python==4.5.1.48
 pyinstaller==4.5
-pyautogui
-pillow
-keyboard
+pyautogui==0.9.53
+pillow==8.4.0
+keyboard==0.13.5

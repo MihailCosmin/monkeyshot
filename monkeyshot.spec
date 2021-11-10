@@ -4,7 +4,7 @@
 block_cipher = None
 
 
-a = Analysis(['monkeyshot\\monkeyshot.py'],
+a = Analysis(['monkeyshot\\monkeyshot.pyw'],
              pathex=['monkeyShot_venv\\\\Lib\\site-packages', 'monkeyShot_venv\\\\Lib\\site-packages\\\\cv2\\', 'D:\\monkeyshot'],
              binaries=[],
              datas=[],
@@ -40,7 +40,7 @@ exe = EXE(pyz,
           strip=False,
           upx=True,
           console=False,
-          disable_windowed_traceback=False,
+          disable_windowed_traceback=True,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None )
