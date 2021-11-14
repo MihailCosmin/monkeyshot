@@ -3,9 +3,13 @@
 
 from subprocess import PIPE
 from subprocess import Popen
+from subprocess import getoutput
 from subprocess import CREATE_NO_WINDOW
 
 from shutil import move
+
+from re import search
+from re import findall
 
 from os import remove
 from os.path import join
@@ -57,6 +61,19 @@ def wait_for_key(key_: str):
     while run_:
         if is_pressed(key_):
             run_ = False
+
+def get_default_camera() -> str:
+    """Get default camera
+
+    Returns:
+        str: Camera Name
+    """
+    list_devices = getoutput('ffmpeg -list_devices true -f dshow -i dummy').replace('\n', '%%%')
+    video_regex = "(DirectShow video devices)(.*?)(DirectShow audio devices)"
+    video_devicces = search(video_regex, list_devices).group(2).replace('%%%', '\n')
+    camera_regex = '(")(.*?)(")'
+    camera = findall(camera_regex, video_devicces)[0][1]
+    return camera
 
 class MonkeyHouse:
     """GUI for MonkeyShot
@@ -138,6 +155,14 @@ class MonkeyHouse:
             )
         )
 
+        self.streamer_button_img = ImageTk.PhotoImage(
+            file=join(
+                dirname(realpath(__file__)),
+                "img",
+                "streamer_button_48px_#AA0000.png"
+            )
+        )
+
         self.settings_button_img = ImageTk.PhotoImage(
             file=join(
                 dirname(realpath(__file__)),
@@ -179,7 +204,17 @@ class MonkeyHouse:
         self.region_record_button = Button(
             self.canvas,
             image=self.region_record_button_img,
-            command=lambda: self.monkey_see(fullscreen=False),
+            command=lambda: self.monkey_see(mode='region'),
+            bg="black",
+            padx=5,
+            pady=5,
+            bd=0,
+            highlightthickness=10
+        )
+        self.streamer_button = Button(
+            self.canvas,
+            image=self.streamer_button_img,
+            command=lambda: self.monkey_see(mode='streaming'),
             bg="black",
             padx=5,
             pady=5,
@@ -201,6 +236,7 @@ class MonkeyHouse:
         self.dynamic_screenshot_button.pack(side='left')
         self.record_button.pack(side='left')
         self.region_record_button.pack(side='left')
+        self.streamer_button.pack(side='left')
         self.settings_button.pack(side='right')
 
         Hovertip(
@@ -218,6 +254,10 @@ class MonkeyHouse:
         Hovertip(
             self.region_record_button,
             'Specific region recording'
+        )
+        Hovertip(
+            self.streamer_button,
+            'Streaming Recording (Desktop Recording with Web Camera recording overlay)'
         )
         Hovertip(
             self.settings_button,
@@ -246,7 +286,7 @@ class MonkeyHouse:
         except ValueError:
             pass
 
-    def monkey_see(self, fullscreen: bool = True):
+    def monkey_see(self, mode: str = 'fullscreen'):
         """Call video recording function
 
         Args:
@@ -254,9 +294,11 @@ class MonkeyHouse:
         """
         self.window.withdraw()
         video_recorder = MonkeyShot()
-        if fullscreen:
+        if mode == 'fullscreen':
             video_recorder.record()
-        else:
+        if mode == 'streaming':
+            video_recorder.streaming_record()
+        elif mode == 'region':
             video_recorder.shoot(mode='video')
         self.window.deiconify()
         monkey_recording = asksaveasfilename(filetypes=VIDEOS, defaultextension=VIDEOS)
@@ -342,7 +384,7 @@ class MonkeyShot:
                 if '>' in audio_device:
                     default_input_device = audio_device[4:].split(", ")[0].strip()
             for audio_device in f"{audio_devices}".split('\n'):
-                if default_input_device in audio_device and audio_device[4:].split(", ")[0].strip() != default_input_device:
+                if default_input_device in audio_device:
                     input_device = audio_device[4:].split(", ")[0].strip()
 
             audio = input_device
@@ -377,6 +419,56 @@ class MonkeyShot:
                 -c:a aac \
                 -strict -2 -ac 2 -b:a 128k \
                 -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" "{filename}" """
+
+        with Popen(cmd, shell=False, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
+            wait_for_key('esc')
+            ffmpeg_process.stdin.write(b'q')  # send q to end ffmpeg process
+
+    def streaming_record(self, region=None, audio: str = None):
+        ffmpeg = "D:\\monkeyshot\\3rd\\ffmpeg.exe"
+        width, height = size()
+        resolution = f'{width}x{height}'
+        if region is not None:
+            resolution = f'{region[2]}x{region[3]}'
+
+        filename = "Video_recording.mp4"
+
+        if audio is None:
+            audio_devices = query_devices()
+            for audio_device in f"{audio_devices}".split('\n'):
+                if '>' in audio_device:
+                    default_input_device = audio_device[4:].split(", ")[0].strip()
+            for audio_device in f"{audio_devices}".split('\n'):
+                if default_input_device in audio_device:
+                    input_device = audio_device[4:].split(", ")[0].strip()
+
+            audio = input_device
+
+        print(F"Audio is: {audio}")
+        camera = get_default_camera()
+        offset_x = 0
+        offset_y = 0
+        if region is not None:
+            offset_x = region[0]
+            offset_y = region[1]
+
+        cmd = f'''{ffmpeg} -f gdigrab \
+            -rtbufsize 100M \
+            -probesize 20M \
+            -framerate 24 \
+            -draw_mouse 1 \
+            -video_size {resolution} \
+            -offset_x {offset_x} \
+            -offset_y {offset_y} \
+            -i desktop \
+            -f dshow \
+            -rtbufsize 100M \
+            -probesize 20M \
+            -i video="{camera}":audio="{audio}" \
+            -filter_complex "[0:v] scale=1920x1080[desktop]; \
+            [1:v] scale=320x240 [webcam]; \
+            [desktop][webcam] overlay=x=W-w-50:y=H-h-50" \
+            "{filename}"'''
 
         with Popen(cmd, shell=False, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
             wait_for_key('esc')
