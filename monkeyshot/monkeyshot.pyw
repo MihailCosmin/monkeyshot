@@ -19,10 +19,14 @@ from os.path import realpath
 from os.path import expanduser
 
 from tkinter import Tk
+from tkinter import Label
 from tkinter import Frame
 from tkinter import Canvas
 from tkinter import Button
 from tkinter import Toplevel
+from tkinter import TclError
+from tkinter import StringVar
+from tkinter import OptionMenu
 from tkinter.filedialog import asksaveasfilename
 
 from pyautogui import size
@@ -82,7 +86,73 @@ class MonkeyHouse:
         self.last_click_x = 0
         self.last_click_y = 0
         self.region = None
+        self.settings_w = None
         self.main_window()
+
+    def settings_window(self):
+        if self.settings_w is None:
+            self.settings_w = Toplevel(self.window)
+            x_main = self.window.winfo_x()
+            y_main = self.window.winfo_y()
+            self.settings_w.title("Settings")
+            self.settings_w.geometry(f"400x400+{x_main + 400}+{y_main}")
+            self.settings_w.configure(bg='black')
+            self.settings_w.resizable(False, False)
+            self.settings_w.overrideredirect(True)
+            self.settings_w.attributes('-alpha', 0.8, '-topmost', 1)
+            title_bar = Frame(self.settings_w, bg='black', highlightthickness=0)
+            title_bar.pack(expand=0, fill='x')
+            close_button = Button(
+                title_bar,
+                image=self.close_button_img,
+                command=self.settings_w.destroy,
+                bg="black",
+                padx=2,
+                pady=2,
+                bd=0,
+                font="bold",
+                fg='red',
+                highlightthickness=0
+            )
+            close_button.pack(side='right')
+            audio_label = Label(
+                self.settings_w,
+                text="Audio Device",
+                bg='#000001',
+                fg='white'
+            )
+            audio_label.place(x=0, y=40)
+
+            audio_var = StringVar(self.settings_w)
+            audio_var.set("None")
+            audio_dropdown = OptionMenu(self.settings_w, audio_var, "Test 1", "Test 2", "Test 3")
+            audio_dropdown.config(
+                width=6,
+                bg='#000001',
+                fg='white',
+                bd=0,
+                highlightthickness=0,
+                activebackground="#000001",
+                activeforeground="#AA0000",
+            )
+            audio_dropdown["menu"].config(
+                bg="#000001",
+                selectcolor="#AA0000",
+                activebackground="#000001",
+                activeforeground="#AA0000",
+                fg='white',
+                bd=0,
+            )
+            audio_dropdown.place(x=200, y=40)
+
+    def sync_windows(self, event=None):
+        if self.settings_w is not None:
+            try:
+                x_main = self.window.winfo_x()
+                y_main = self.window.winfo_y()
+                self.settings_w.geometry(f"400x400+{x_main + 400}+{y_main}")
+            except TclError:
+                self.settings_w = None
 
     def main_window(self):
         """Main window
@@ -91,10 +161,12 @@ class MonkeyHouse:
         self.window.overrideredirect(True)
         self.window.title('MonkeyHouse')
         self.window.configure(bg='black')
+        # self.window.wm_attributes('-transparentcolor', self.window['bg'])
+        self.window.wm_attributes('-transparentcolor', '#000001')
         self.window.resizable(False, False)
         self.window.geometry('400x100+200+200')
 
-        self.title_bar = Frame(self.window, bg='black', relief='raised', bd=2, highlightthickness=0)
+        self.title_bar = Frame(self.window, bg='black', highlightthickness=0)
 
         self.close_button_img = ImageTk.PhotoImage(
             file=join(
@@ -224,7 +296,7 @@ class MonkeyHouse:
         self.settings_button = Button(
             self.canvas,
             image=self.settings_button_img,
-            command=None,
+            command=self.settings_window,
             bg="black",
             padx=5,
             pady=5,
@@ -269,6 +341,8 @@ class MonkeyHouse:
         self.title_bar.bind('<Button-1>', self._save_last_click)
         self.title_bar.bind('<B1-Motion>', self._window_moving)
 
+        self.window.bind("<Configure>", self.sync_windows)
+
         self.window.mainloop()
 
     def monkey_shot(self, mode: str = 'static'):
@@ -278,9 +352,11 @@ class MonkeyHouse:
             mode (str, optional): Screenshot mode. Defaults to 'static'.
         """
         self.window.withdraw()
+        self.settings_w.withdraw()
         screenshot_session = MonkeyShot()
         monkey_screenshot = screenshot_session.shoot(mode)
         self.window.deiconify()
+        self.settings_w.deiconify()
         try:
             monkey_screenshot.save(asksaveasfilename(filetypes=IMAGES, defaultextension=IMAGES))
         except ValueError:
@@ -293,6 +369,7 @@ class MonkeyHouse:
             fullscreen (bool, optional): Fullscreen recording. Defaults to True.
         """
         self.window.withdraw()
+        self.settings_w.withdraw()
         video_recorder = MonkeyShot()
         if mode == 'fullscreen':
             video_recorder.record()
@@ -301,11 +378,15 @@ class MonkeyHouse:
         elif mode == 'region':
             video_recorder.shoot(mode='video')
         self.window.deiconify()
+        self.settings_w.deiconify()
         monkey_recording = asksaveasfilename(filetypes=VIDEOS, defaultextension=VIDEOS)
         if isfile(monkey_recording):
             remove(monkey_recording)
 
-        move("Video_recording.mp4", monkey_recording)
+        try:
+            move("Video_recording.mp4", monkey_recording)
+        except FileNotFoundError:
+            pass
 
     def _save_last_click(self, event):
         self.last_click_x = event.x
@@ -444,7 +525,6 @@ class MonkeyShot:
 
             audio = input_device
 
-        print(F"Audio is: {audio}")
         camera = get_default_camera()
         offset_x = 0
         offset_y = 0
