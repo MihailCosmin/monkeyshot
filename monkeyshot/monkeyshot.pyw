@@ -66,18 +66,48 @@ def wait_for_key(key_: str):
         if is_pressed(key_):
             run_ = False
 
-def get_default_camera() -> str:
-    """Get default camera
+def get_video_devices() -> (str, list):
+    """Get video devices
 
     Returns:
-        str: Camera Name
+        tuple:
+            str: Camera Name,
+            list: Camera Device List
     """
     list_devices = getoutput('ffmpeg -list_devices true -f dshow -i dummy').replace('\n', '%%%')
     video_regex = "(DirectShow video devices)(.*?)(DirectShow audio devices)"
     video_devicces = search(video_regex, list_devices).group(2).replace('%%%', '\n')
-    camera_regex = '(")(.*?)(")'
+    print(f"video_devicces: {video_devicces}")
+    camera_regex = '(]  ")(.*?)(")'
+    video_devs = []
+    for dev in findall(camera_regex, video_devicces):
+        video_devs.append(dev[1])
     camera = findall(camera_regex, video_devicces)[0][1]
-    return camera
+    video_devs.remove(camera)
+    return camera, video_devs
+
+def get_audio_devices() -> (str, list):
+    """Get audio devices
+
+    Returns:
+        tuple:
+            str: Default Audio Device Name,
+            list: Audio Device List
+    """
+    audio_devices_raw = query_devices()
+    audio_devices = []
+    for audio_device in f"{audio_devices_raw}".split('\n'):
+        device_name = audio_device[4:].split(", ")[0].strip()
+        if '>' in audio_device:
+            default_input_device = device_name
+        elif device_name not in audio_devices and ")" in device_name and "0 in" not in audio_device:
+            audio_devices.append(device_name)
+    for audio_device in f"{audio_devices_raw}".split('\n'):
+        if default_input_device in audio_device:
+            default_audio = audio_device[4:].split(", ")[0].strip()
+
+    audio_devices.remove(default_audio)
+    return default_audio, audio_devices
 
 class MonkeyHouse:
     """GUI for MonkeyShot
@@ -90,12 +120,14 @@ class MonkeyHouse:
         self.main_window()
 
     def settings_window(self):
+        """Settings Window
+        """
         if self.settings_w is None:
             self.settings_w = Toplevel(self.window)
             x_main = self.window.winfo_x()
             y_main = self.window.winfo_y()
             self.settings_w.title("Settings")
-            self.settings_w.geometry(f"400x400+{x_main + 400}+{y_main}")
+            self.settings_w.geometry(f"800x400+{x_main + 400}+{y_main}")
             self.settings_w.configure(bg='black')
             self.settings_w.resizable(False, False)
             self.settings_w.overrideredirect(True)
@@ -121,13 +153,32 @@ class MonkeyHouse:
                 bg='#000001',
                 fg='white'
             )
-            audio_label.place(x=0, y=40)
+            video_label = Label(
+                self.settings_w,
+                text="Video Device",
+                bg='#000001',
+                fg='white'
+            )
+            audio_label.place(x=10, y=40)
+            video_label.place(x=10, y=80)
 
             audio_var = StringVar(self.settings_w)
-            audio_var.set("None")
-            audio_dropdown = OptionMenu(self.settings_w, audio_var, "Test 1", "Test 2", "Test 3")
+            video_var = StringVar(self.settings_w)
+            default_audio_device, audio_devices_list = get_audio_devices()
+            default_video_device, video_devices_list = get_video_devices()
+            audio_var.set(default_audio_device)
+            video_var.set(default_video_device)
+            audio_dropdown = OptionMenu(self.settings_w, audio_var, default_audio_device, *audio_devices_list)
+            video_dropdown = OptionMenu(self.settings_w, video_var, default_video_device, *video_devices_list)
             audio_dropdown.config(
-                width=6,
+                bg='#000001',
+                fg='white',
+                bd=0,
+                highlightthickness=0,
+                activebackground="#000001",
+                activeforeground="#AA0000",
+            )
+            video_dropdown.config(
                 bg='#000001',
                 fg='white',
                 bd=0,
@@ -143,14 +194,28 @@ class MonkeyHouse:
                 fg='white',
                 bd=0,
             )
-            audio_dropdown.place(x=200, y=40)
+            video_dropdown["menu"].config(
+                bg="#000001",
+                selectcolor="#AA0000",
+                activebackground="#000001",
+                activeforeground="#AA0000",
+                fg='white',
+                bd=0,
+            )
+            audio_dropdown.place(x=250, y=40)
+            video_dropdown.place(x=250, y=80)
 
     def sync_windows(self, event=None):
+        """Sync Windows
+
+        Args:
+            event
+        """
         if self.settings_w is not None:
             try:
                 x_main = self.window.winfo_x()
                 y_main = self.window.winfo_y()
-                self.settings_w.geometry(f"400x400+{x_main + 400}+{y_main}")
+                self.settings_w.geometry(f"800x400+{x_main + 400}+{y_main}")
             except TclError:
                 self.settings_w = None
 
@@ -352,11 +417,13 @@ class MonkeyHouse:
             mode (str, optional): Screenshot mode. Defaults to 'static'.
         """
         self.window.withdraw()
-        self.settings_w.withdraw()
+        if self.settings_w is not None:
+            self.settings_w.withdraw()
         screenshot_session = MonkeyShot()
         monkey_screenshot = screenshot_session.shoot(mode)
         self.window.deiconify()
-        self.settings_w.deiconify()
+        if self.settings_w is not None:
+            self.settings_w.deiconify()
         try:
             monkey_screenshot.save(asksaveasfilename(filetypes=IMAGES, defaultextension=IMAGES))
         except ValueError:
@@ -369,7 +436,8 @@ class MonkeyHouse:
             fullscreen (bool, optional): Fullscreen recording. Defaults to True.
         """
         self.window.withdraw()
-        self.settings_w.withdraw()
+        if self.settings_w is not None:
+            self.settings_w.withdraw()
         video_recorder = MonkeyShot()
         if mode == 'fullscreen':
             video_recorder.record()
@@ -378,7 +446,8 @@ class MonkeyHouse:
         elif mode == 'region':
             video_recorder.shoot(mode='video')
         self.window.deiconify()
-        self.settings_w.deiconify()
+        if self.settings_w is not None:
+            self.settings_w.deiconify()
         monkey_recording = asksaveasfilename(filetypes=VIDEOS, defaultextension=VIDEOS)
         if isfile(monkey_recording):
             remove(monkey_recording)
@@ -525,7 +594,7 @@ class MonkeyShot:
 
             audio = input_device
 
-        camera = get_default_camera()
+        camera = get_video_devices()[0]
         offset_x = 0
         offset_y = 0
         if region is not None:
