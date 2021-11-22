@@ -8,6 +8,7 @@ from subprocess import CREATE_NO_WINDOW
 
 from shutil import move
 
+from re import sub
 from re import search
 from re import findall
 
@@ -61,6 +62,11 @@ VIDEOS = [
 ]
 
 def wait_for_key(key_: str):
+    """Wait for key to be pressed
+
+    Args:
+        key_ (str): Key to wait for
+    """
     run_ = True
     while run_:
         if is_pressed(key_):
@@ -118,6 +124,54 @@ class MonkeyHouse:
         self.region = None
         self.settings_w = None
         self.main_window()
+
+    @staticmethod
+    def read_settings_file() -> dict:
+        # TODO:
+        """Read the settings.xml file and return the settings as a dictionary
+
+        Returns:
+            dict: Dictionary with the settings
+        """
+        settings_dict = {}
+        if isfile("settings.xml"):
+            with open("settings.xml", "r", encoding="utf-8") as settings_file:
+                content = settings_file.read()
+            settings_dict["Audio Device"] = search(
+                r"(<AudioDevice>[\r\n \t]*)(.*?)([\r\n \t]*</AudioDevice>)",
+                content
+            ).group(2)
+            settings_dict["Video Device"] = search(
+                r"(<VideoDevice>[\r\n \t]*)(.*?)([\r\n \t]*</VideoDevice>)",
+                content
+            ).group(2)
+
+        return settings_dict
+
+    @staticmethod
+    def save_settings_file(settings_dict: dict):
+        # TODO:
+        """SAve settings to file
+
+        Args:
+            settings_dict (dict): Dictionary with the settings to be saved
+        """
+        with open("settings.xml", "r", encoding="utf-8") as settings_file:
+            content = settings_file.read()
+        if "Audio Device" in settings_dict:
+            content = sub(
+                r"(<AudioDevice>[\r\n \t]*)(.*?)([\r\n \t]*</AudioDevice>)",
+                f"\1{settings_dict['Audio Device']}\3",
+                content
+            )
+        if "Video Device" in settings_dict:
+            content = sub(
+                r"(<VideoDevice>[\r\n \t]*)(.*?)([\r\n \t]*</VideoDevice>)",
+                f"\1{settings_dict['Video Device']}\3",
+                content
+            )
+        with open("settings.xml", "w", encoding="utf-8") as settings_file:
+            settings_file.write(content)
 
     def settings_window(self):
         """Settings Window
