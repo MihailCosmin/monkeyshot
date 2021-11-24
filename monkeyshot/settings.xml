@@ -1,4 +1,4 @@
 <Settings>
-	<AudioDevice>None</AudioDevice>
-	<VideoDevice>Mone</VideoDevice>
+	<AudioDevice>Microphone (USB 2.0 Camera)</AudioDevice>
+	<VideoDevice>USB Camera</VideoDevice>
 </Settings>

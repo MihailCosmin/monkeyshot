@@ -16,6 +16,7 @@ from os import remove
 from os.path import join
 from os.path import isfile
 from os.path import dirname
+from os.path import abspath
 from os.path import realpath
 from os.path import expanduser
 
@@ -41,6 +42,7 @@ from PIL import ImageTk
 
 from idlelib.tooltip import Hovertip
 
+WORKING_DIR = dirname(abspath(__file__))
 
 IMAGES = [
     ('JPEG Image', '*.jpg'),
@@ -83,7 +85,6 @@ def get_video_devices() -> (str, list):
     list_devices = getoutput('ffmpeg -list_devices true -f dshow -i dummy').replace('\n', '%%%')
     video_regex = "(DirectShow video devices)(.*?)(DirectShow audio devices)"
     video_devicces = search(video_regex, list_devices).group(2).replace('%%%', '\n')
-    print(f"video_devicces: {video_devicces}")
     camera_regex = '(]  ")(.*?)(")'
     video_devs = []
     for dev in findall(camera_regex, video_devicces):
@@ -134,8 +135,8 @@ class MonkeyHouse:
             dict: Dictionary with the settings
         """
         settings_dict = {}
-        if isfile("settings.xml"):
-            with open("settings.xml", "r", encoding="utf-8") as settings_file:
+        if isfile(join(WORKING_DIR, "settings.xml")):
+            with open(join(WORKING_DIR, "settings.xml"), "r", encoding="utf-8") as settings_file:
                 content = settings_file.read()
             settings_dict["Audio Device"] = search(
                 r"(<AudioDevice>[\r\n \t]*)(.*?)([\r\n \t]*</AudioDevice>)",
@@ -156,27 +157,36 @@ class MonkeyHouse:
         Args:
             settings_dict (dict): Dictionary with the settings to be saved
         """
-        with open("settings.xml", "r", encoding="utf-8") as settings_file:
+        with open(join(WORKING_DIR, "settings.xml"), "r", encoding="utf-8") as settings_file:
             content = settings_file.read()
         if "Audio Device" in settings_dict:
             content = sub(
                 r"(<AudioDevice>[\r\n \t]*)(.*?)([\r\n \t]*</AudioDevice>)",
-                f"\1{settings_dict['Audio Device']}\3",
+                fr"\1{settings_dict['Audio Device']}\3",
                 content
             )
         if "Video Device" in settings_dict:
             content = sub(
                 r"(<VideoDevice>[\r\n \t]*)(.*?)([\r\n \t]*</VideoDevice>)",
-                f"\1{settings_dict['Video Device']}\3",
+                fr"\1{settings_dict['Video Device']}\3",
                 content
             )
-        with open("settings.xml", "w", encoding="utf-8") as settings_file:
+        with open(join(WORKING_DIR, "settings.xml"), "w", encoding="utf-8") as settings_file:
             settings_file.write(content)
 
     def settings_window(self):
         """Settings Window
         """
+
+        def on_enter(e):
+            e.widget.config(foreground="red")
+
+        def on_leave(e):
+            e.widget.config(foreground='white')
+
         if self.settings_w is None:
+            settings_ = self.read_settings_file()
+            print(f"settings_: {settings_}")
             self.settings_w = Toplevel(self.window)
             x_main = self.window.winfo_x()
             y_main = self.window.winfo_y()
@@ -218,10 +228,22 @@ class MonkeyHouse:
 
             audio_var = StringVar(self.settings_w)
             video_var = StringVar(self.settings_w)
+
+            current_settings_dict = self.read_settings_file()
+
             default_audio_device, audio_devices_list = get_audio_devices()
             default_video_device, video_devices_list = get_video_devices()
-            audio_var.set(default_audio_device)
-            video_var.set(default_video_device)
+
+            if "Audio Device" not in current_settings_dict:
+                audio_var.set(default_audio_device)
+            else:
+                audio_var.set(current_settings_dict['Audio Device'])
+
+            if "Video Device" not in current_settings_dict:
+                video_var.set(default_video_device)
+            else:
+                video_var.set(current_settings_dict['Video Device'])
+
             audio_dropdown = OptionMenu(self.settings_w, audio_var, default_audio_device, *audio_devices_list)
             video_dropdown = OptionMenu(self.settings_w, video_var, default_video_device, *video_devices_list)
             audio_dropdown.config(
@@ -238,26 +260,76 @@ class MonkeyHouse:
                 bd=0,
                 highlightthickness=0,
                 activebackground="#000001",
-                activeforeground="#AA0000",
+                activeforeground="red",
             )
             audio_dropdown["menu"].config(
                 bg="#000001",
                 selectcolor="#AA0000",
                 activebackground="#000001",
-                activeforeground="#AA0000",
+                activeforeground="red",
                 fg='white',
                 bd=0,
             )
             video_dropdown["menu"].config(
                 bg="#000001",
-                selectcolor="#AA0000",
+                selectcolor="red",
                 activebackground="#000001",
-                activeforeground="#AA0000",
+                activeforeground="red",
                 fg='white',
                 bd=0,
             )
             audio_dropdown.place(x=250, y=40)
             video_dropdown.place(x=250, y=80)
+
+            bottom_frame = Frame(self.settings_w, bg='black', highlightthickness=0)
+            bottom_frame.pack(side='bottom', fill='x', expand='no')
+            save_settings_button = Button(
+                bottom_frame,
+                text="Save & Close",
+                bg='black',
+                fg="white",
+                command=lambda: [
+                    self.save_settings_file(
+                        {
+                            'Audio Device': audio_var.get(),
+                            'Video Device': video_var.get(),
+                        }
+                    ),
+                    self.settings_w.destroy()
+                ]
+            )
+            apply_settings_button = Button(
+                bottom_frame,
+                text="Apply",
+                bg='black',
+                fg="white",
+                command=lambda: self.save_settings_file(
+                    {
+                        'Audio Device': audio_var.get(),
+                        'Video Device': video_var.get(),
+                    }
+                )
+            )
+
+            close_settings_button = Button(
+                bottom_frame,
+                text="Close",
+                bg='black',
+                fg="white",
+                command=lambda: self.settings_w.destroy()
+            )
+            save_settings_button.pack(side='left', expand='yes')
+            apply_settings_button.pack(side='left', expand='yes')
+            close_settings_button.pack(side='left', expand='yes')
+
+            save_settings_button.bind('<Enter>', on_enter)
+            save_settings_button.bind('<Leave>', on_leave)
+
+            apply_settings_button.bind('<Enter>', on_enter)
+            apply_settings_button.bind('<Leave>', on_leave)
+
+            close_settings_button.bind('<Enter>', on_enter)
+            close_settings_button.bind('<Leave>', on_leave)
 
     def sync_windows(self, event=None):
         """Sync Windows
