@@ -4,7 +4,10 @@
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import getoutput
-from subprocess import CREATE_NO_WINDOW
+try:
+    from subprocess import CREATE_NO_WINDOW
+except ImportError:
+    CREATE_NO_WINDOW = 134217728
 
 from shutil import move
 
