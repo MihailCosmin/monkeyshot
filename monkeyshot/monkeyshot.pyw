@@ -185,13 +185,14 @@ class MonkeyHouse:
             e.widget.config(foreground='white')
 
         if self.settings_w is None:
-            settings_ = self.read_settings_file()
-            print(f"settings_: {settings_}")
             self.settings_w = Toplevel(self.window)
             x_main = self.window.winfo_x()
             y_main = self.window.winfo_y()
             self.settings_w.title("Settings")
-            self.settings_w.geometry(f"800x400+{x_main + 400}+{y_main}")
+            if self.window.winfo_x() + 400 + 1000 <= size()[0]:
+                self.settings_w.geometry(f"1000x400+{x_main + 400}+{y_main}")
+            else:
+                self.settings_w.geometry(f"1000x400+{x_main - 600}+{y_main + 100}")
             self.settings_w.configure(bg='black')
             self.settings_w.resizable(False, False)
             self.settings_w.overrideredirect(True)
@@ -341,7 +342,10 @@ class MonkeyHouse:
             try:
                 x_main = self.window.winfo_x()
                 y_main = self.window.winfo_y()
-                self.settings_w.geometry(f"800x400+{x_main + 400}+{y_main}")
+                if self.window.winfo_x() + 400 + 1000 <= size()[0]:
+                    self.settings_w.geometry(f"1000x400+{x_main + 400}+{y_main}")
+                else:
+                    self.settings_w.geometry(f"1000x400+{x_main - 600}+{y_main + 100}")
             except TclError:
                 self.settings_w = None
 

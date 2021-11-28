@@ -1,4 +1,4 @@
 <Settings>
-	<AudioDevice>Microphone (USB 2.0 Camera)</AudioDevice>
+	<AudioDevice>Microphone (Realtek High Definition Audio)</AudioDevice>
 	<VideoDevice>USB Camera</VideoDevice>
 </Settings>
