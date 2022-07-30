@@ -6,3 +6,10 @@ Utility for making easy screenshots and desktop recordings
 Works on Windows
 
 TODO: Make it work on Linux
+
+
+# Installation
+
+1. You can use the built installer. See releases
+
+2. Build it yourself. You can run the build_exe.bat to build it.
