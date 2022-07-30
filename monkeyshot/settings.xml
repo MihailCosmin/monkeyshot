@@ -1,4 +1,4 @@
 <Settings>
-	<AudioDevice>Microphone (Realtek High Definition Audio)</AudioDevice>
+	<AudioDevice>Mikrofonarray (Realtek HD Audio Mic input)</AudioDevice>
 	<VideoDevice>USB Camera</VideoDevice>
 </Settings>

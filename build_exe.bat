@@ -12,4 +12,7 @@ rem if exist "dist\" @RD /S /Q "dist"
 rem del "monkeyshot.spec"
 if exist "monkeyShot_venv\" @RD /S /Q "monkeyShot_venv"
 
+:: Copy 3rd folder to dist
+robocopy 3rd\ "dist\monkeyshot\3rd" /E
+
 timeout /t 100

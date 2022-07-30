@@ -24,7 +24,8 @@ a.datas += [('img\\monkey.ico','monkeyshot\\img\\monkey.ico', "DATA"),
 	('img\\record_button_48px_#AA0000.png','monkeyshot\\img\\record_button_48px_#AA0000.png', "DATA"),
 	('img\\region_record_button_48px_#AA0000.png','monkeyshot\\img\\region_record_button_48px_#AA0000.png', "DATA"),
 	('img\\settings_button_48px_#AA0000.png','monkeyshot\\img\\settings_button_48px_#AA0000.png', "DATA"),
-	('img\\static_screenshot_button_48px_#AA0000.png','monkeyshot\\img\\static_screenshot_button_48px_#AA0000.png', "DATA")
+	('img\\static_screenshot_button_48px_#AA0000.png','monkeyshot\\img\\static_screenshot_button_48px_#AA0000.png', "DATA"),
+	('img\\streamer_button_48px_#AA0000.png','monkeyshot\\img\\streamer_button_48px_#AA0000.png', "DATA"),
 ]
 
 pyz = PYZ(a.pure, a.zipped_data,

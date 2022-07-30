@@ -106,17 +106,21 @@ def get_audio_devices() -> (str, list):
     """
     audio_devices_raw = query_devices()
     audio_devices = []
+    default_input_device = "None"
     for audio_device in f"{audio_devices_raw}".split('\n'):
         device_name = audio_device[4:].split(", ")[0].strip()
         if '>' in audio_device:
             default_input_device = device_name
         elif device_name not in audio_devices and ")" in device_name and "0 in" not in audio_device:
             audio_devices.append(device_name)
+
+    default_audio = None
     for audio_device in f"{audio_devices_raw}".split('\n'):
         if default_input_device in audio_device:
             default_audio = audio_device[4:].split(", ")[0].strip()
 
-    audio_devices.remove(default_audio)
+    if default_audio in audio_devices:
+        audio_devices.remove(default_audio)
     return default_audio, audio_devices
 
 class MonkeyHouse:
@@ -652,25 +656,38 @@ class MonkeyShot:
         self.window.mainloop()
         return self.monkey_screenshot
 
-    def record(self, region=None, audio: str = None):
-        ffmpeg = "D:\\monkeyshot\\3rd\\ffmpeg.exe"
+    def record(self, region=None, audio: str = None) -> None:
+        """Record a video of the screen
+
+        Args:
+            region (list, optional): Region to record. Defaults to None.
+            audio (str, optional): Audio to record. Defaults to None.
+
+        Returns:
+            None
+        """
+        ffmpeg = abspath(".//3rd//ffmpeg.exe")
         width, height = size()
         resolution = f'{width}x{height}'
         if region is not None:
             resolution = f'{region[2]}x{region[3]}'
 
         filename = "Video_recording.mp4"
-
+        default_input_device = "None"
         if audio is None:
             audio_devices = query_devices()
             for audio_device in f"{audio_devices}".split('\n'):
                 if '>' in audio_device:
                     default_input_device = audio_device[4:].split(", ")[0].strip()
+                    break
+
             for audio_device in f"{audio_devices}".split('\n'):
                 if default_input_device in audio_device:
                     input_device = audio_device[4:].split(", ")[0].strip()
+                    break
 
-            audio = input_device
+            audio = f'-f dshow -channel_layout stereo  -thread_queue_size 1024 -i audio="{input_device}"' \
+                if default_input_device != "None" else ''
 
         offset_x = 0
         offset_y = 0
@@ -678,7 +695,7 @@ class MonkeyShot:
             offset_x = region[0]
             offset_y = region[1]
 
-        cmd = f"""{ffmpeg} -y \
+        cmd = f'"{ffmpeg}" -y \
                 -rtbufsize 200M \
                 -f gdigrab \
                 -thread_queue_size 1024 \
@@ -690,10 +707,7 @@ class MonkeyShot:
                 -offset_x {offset_x} \
                 -offset_y {offset_y} \
                 -i desktop \
-                -f dshow \
-                -channel_layout stereo \
-                -thread_queue_size 1024 \
-                -i audio="{audio}" \
+                {audio} \
                 -c:v libx264 \
                 -r 10 -preset ultrafast \
                 -tune zerolatency \
@@ -701,21 +715,30 @@ class MonkeyShot:
                 -pix_fmt yuv420p \
                 -c:a aac \
                 -strict -2 -ac 2 -b:a 128k \
-                -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" "{filename}" """
-
+                -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" "{filename}" '.replace("                ", "")
+        print(f"cmd = {cmd}")
         with Popen(cmd, shell=False, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
             wait_for_key('esc')
             ffmpeg_process.stdin.write(b'q')  # send q to end ffmpeg process
 
-    def streaming_record(self, region=None, audio: str = None):
-        ffmpeg = "D:\\monkeyshot\\3rd\\ffmpeg.exe"
+    def streaming_record(self, region=None, audio: str = None) -> None:
+        """Record a video of the screen
+
+        Args:
+            region (list, optional): Region to record. Defaults to None.
+            audio (str, optional): Audio to record. Defaults to None.
+
+        Returns:
+            None
+        """
+        ffmpeg = abspath(".//3rd//ffmpeg.exe")
         width, height = size()
         resolution = f'{width}x{height}'
         if region is not None:
             resolution = f'{region[2]}x{region[3]}'
 
         filename = "Video_recording.mp4"
-
+        default_input_device = "None"
         if audio is None:
             audio_devices = query_devices()
             for audio_device in f"{audio_devices}".split('\n'):
@@ -725,7 +748,7 @@ class MonkeyShot:
                 if default_input_device in audio_device:
                     input_device = audio_device[4:].split(", ")[0].strip()
 
-            audio = input_device
+            audio = f':audio="{input_device}"' if default_input_device != "None" else ''
 
         camera = get_video_devices()[0]
         offset_x = 0
@@ -734,7 +757,7 @@ class MonkeyShot:
             offset_x = region[0]
             offset_y = region[1]
 
-        cmd = f'''{ffmpeg} -f gdigrab \
+        cmd = f'{ffmpeg} -f gdigrab \
             -rtbufsize 100M \
             -probesize 20M \
             -framerate 24 \
@@ -746,11 +769,12 @@ class MonkeyShot:
             -f dshow \
             -rtbufsize 100M \
             -probesize 20M \
-            -i video="{camera}":audio="{audio}" \
+            -i video="{camera}"{audio} \
             -filter_complex "[0:v] scale=1920x1080[desktop]; \
             [1:v] scale=320x240 [webcam]; \
             [desktop][webcam] overlay=x=W-w-50:y=H-h-50" \
-            "{filename}"'''
+            "{filename}"'.replace("            ", "")
+        print(f"cmd = {cmd}")
 
         with Popen(cmd, shell=False, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
             wait_for_key('esc')
