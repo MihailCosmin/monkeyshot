@@ -1,5 +1,5 @@
 # monkeyshot
-Utility for making easy screenshots
+Utility for making easy screenshots and desktop recordings
 
 Works on Windows
 
