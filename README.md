@@ -10,6 +10,6 @@ TODO: Make it work on Linux
 
 # Installation
 
-1. You can use the built installer. See releases
+1. You can use the built installer. See <a href="https://github.com/MihailCosmin/monkeyshot/releases">releases</a>
 
 2. Build it yourself. You can run the build_exe.bat to build it.
