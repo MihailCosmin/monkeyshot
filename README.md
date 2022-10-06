@@ -6,6 +6,7 @@ Utility for making easy screenshots and desktop recordings
 Works on Windows
 
 TODO: Make it work on current screen (screen where GUI is).
+
 TODO: Make it work on Linux
 
 
