@@ -134,6 +134,7 @@ class MonkeyHouse:
         self.last_click_y = 0
         self.region = None
         self.settings_w = None
+        self._init_settings()
         self.main_window()
 
     @staticmethod
@@ -160,9 +161,17 @@ class MonkeyHouse:
         return settings_dict
 
     @staticmethod
-    def save_settings_file(settings_dict: dict):
+    def _init_settings():
+        if not isfile(join(WORKING_DIR, "settings.xml")):
+            with open(join(WORKING_DIR, "settings.xml"), "w", encoding="utf-8") as settings_file:
+                settings_file.write("<Settings>\n")
+                settings_file.write(f"    <AudioDevice>{get_audio_devices()[0]}</AudioDevice>\n")
+                settings_file.write(f"    <VideoDevice>{get_video_devices()[0]}</VideoDevice>\n")
+                settings_file.write("</Settings>")
+
+    def save_settings_file(self, settings_dict: dict):
         # TODO:
-        """SAve settings to file
+        """Save settings to file
 
         Args:
             settings_dict (dict): Dictionary with the settings to be saved
@@ -308,6 +317,7 @@ class MonkeyHouse:
                     ),
                     self.settings_w.destroy()
                 ]
+                
             )
             apply_settings_button = Button(
                 bottom_frame,
