@@ -34,6 +34,8 @@ from tkinter import StringVar
 from tkinter import OptionMenu
 from tkinter.filedialog import asksaveasfilename
 
+from typing import Tuple
+
 from pyautogui import size
 from pyautogui import position
 from pyautogui import screenshot
@@ -77,7 +79,7 @@ def wait_for_key(key_: str):
         if is_pressed(key_):
             run_ = False
 
-def get_video_devices() -> (str, list):
+def get_video_devices() -> Tuple[str, list]:
     """Get video devices
 
     Returns:
@@ -96,7 +98,7 @@ def get_video_devices() -> (str, list):
     video_devs.remove(camera)
     return camera, video_devs
 
-def get_audio_devices() -> (str, list):
+def get_audio_devices() -> Tuple[str, list]:
     """Get audio devices
 
     Returns:
@@ -121,6 +123,7 @@ def get_audio_devices() -> (str, list):
 
     if default_audio in audio_devices:
         audio_devices.remove(default_audio)
+
     return default_audio, audio_devices
 
 class MonkeyHouse:
@@ -135,7 +138,7 @@ class MonkeyHouse:
 
     @staticmethod
     def read_settings_file() -> dict:
-        # TODO:
+        # TODO: Change settings to json
         """Read the settings.xml file and return the settings as a dictionary
 
         Returns:
@@ -324,7 +327,7 @@ class MonkeyHouse:
                 text="Close",
                 bg='black',
                 fg="white",
-                command=lambda: self.settings_w.destroy()
+                command=self.settings_w.destroy
             )
             save_settings_button.pack(side='left', expand='yes')
             apply_settings_button.pack(side='left', expand='yes')
@@ -592,7 +595,7 @@ class MonkeyHouse:
         try:
             move("Video_recording.mp4", monkey_recording)
         except FileNotFoundError:
-            pass
+            raise Exception("No recording found") from None
 
     def _save_last_click(self, event):
         self.last_click_x = event.x
@@ -675,18 +678,22 @@ class MonkeyShot:
         filename = "Video_recording.mp4"
         default_input_device = "None"
         if audio is None:
-            audio_devices = query_devices()
-            for audio_device in f"{audio_devices}".split('\n'):
+            audio_devices_raw = query_devices()
+            audio_devices = []
+            default_input_device = "None"
+            for audio_device in f"{audio_devices_raw}".split('\n'):
+                device_name = audio_device[4:].split(", ")[0].strip()
                 if '>' in audio_device:
-                    default_input_device = audio_device[4:].split(", ")[0].strip()
-                    break
+                    default_input_device = device_name
+                elif device_name not in audio_devices and ")" in device_name and "0 in" not in audio_device:
+                    audio_devices.append(device_name)
 
-            for audio_device in f"{audio_devices}".split('\n'):
+            default_audio = None
+            for audio_device in f"{audio_devices_raw}".split('\n'):
                 if default_input_device in audio_device:
-                    input_device = audio_device[4:].split(", ")[0].strip()
-                    break
+                    default_audio = audio_device[4:].split(", ")[0].strip()
 
-            audio = f'-f dshow -channel_layout stereo  -thread_queue_size 1024 -i audio="{input_device}"' \
+            audio = f'-f dshow -channel_layout stereo  -thread_queue_size 1024 -i audio="{default_audio}"' \
                 if default_input_device != "None" else ''
 
         offset_x = 0
@@ -717,9 +724,11 @@ class MonkeyShot:
                 -strict -2 -ac 2 -b:a 128k \
                 -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" "{filename}" '.replace("                ", "")
         print(f"cmd = {cmd}")
-        with Popen(cmd, shell=False, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
+        #with Popen(cmd, shell=True, stdin=PIPE, creationflags=CREATE_NO_WINDOW) as ffmpeg_process:
+        with Popen(cmd, shell=True, stdin=PIPE) as ffmpeg_process:
             wait_for_key('esc')
             ffmpeg_process.stdin.write(b'q')  # send q to end ffmpeg process
+            # ffmpeg_process.stdin.close()  # send q to end ffmpeg process
 
     def streaming_record(self, region=None, audio: str = None) -> None:
         """Record a video of the screen
@@ -740,15 +749,22 @@ class MonkeyShot:
         filename = "Video_recording.mp4"
         default_input_device = "None"
         if audio is None:
-            audio_devices = query_devices()
-            for audio_device in f"{audio_devices}".split('\n'):
+            audio_devices_raw = query_devices()
+            audio_devices = []
+            default_input_device = "None"
+            for audio_device in f"{audio_devices_raw}".split('\n'):
+                device_name = audio_device[4:].split(", ")[0].strip()
                 if '>' in audio_device:
-                    default_input_device = audio_device[4:].split(", ")[0].strip()
-            for audio_device in f"{audio_devices}".split('\n'):
-                if default_input_device in audio_device:
-                    input_device = audio_device[4:].split(", ")[0].strip()
+                    default_input_device = device_name
+                elif device_name not in audio_devices and ")" in device_name and "0 in" not in audio_device:
+                    audio_devices.append(device_name)
 
-            audio = f':audio="{input_device}"' if default_input_device != "None" else ''
+            default_audio = None
+            for audio_device in f"{audio_devices_raw}".split('\n'):
+                if default_input_device in audio_device:
+                    default_audio = audio_device[4:].split(", ")[0].strip()
+
+            audio = f':audio="{default_audio}"' if default_input_device != "None" else ''
 
         camera = get_video_devices()[0]
         offset_x = 0
