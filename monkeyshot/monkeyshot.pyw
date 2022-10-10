@@ -317,7 +317,6 @@ class MonkeyHouse:
                     ),
                     self.settings_w.destroy()
                 ]
-                
             )
             apply_settings_button = Button(
                 bottom_frame,
